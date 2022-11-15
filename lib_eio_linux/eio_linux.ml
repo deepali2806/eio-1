@@ -18,6 +18,7 @@ let src = Logs.Src.create "eio_linux" ~doc:"Effect-based IO system for Linux/io-
 module Log = (val Logs.src_log src : Logs.LOG)
 
 open Eio.Std
+open Unified_interface
 
 module Fiber_context = Eio.Private.Fiber_context
 module Ctf = Eio.Private.Ctf
@@ -1465,6 +1466,19 @@ let rec run : type a.
                 );
               schedule st
             )
+
+          | Sched.Suspend f -> Some ( fun k -> 
+              let k = { Suspended.k; fiber } in
+              let resumer v = 
+              		            (match v with
+                                | Ok x -> enqueue_thread st k x
+                                | Error ex -> enqueue_failed_thread st k ex
+				                      );			
+                               true
+              in 
+                  f resumer;
+                  schedule st
+             )
           | Eio.Private.Effects.Fork (new_fiber, f) -> Some (fun k ->
               let k = { Suspended.k; fiber } in
               enqueue_at_head st k ();

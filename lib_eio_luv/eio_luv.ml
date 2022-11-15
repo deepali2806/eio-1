@@ -18,6 +18,7 @@ let src = Logs.Src.create "eio_luv" ~doc:"Eio backend using luv"
 module Log = (val Logs.src_log src : Logs.LOG)
 
 open Eio.Std
+open Unified_interface
 
 module Ctf = Eio.Private.Ctf
 
@@ -1178,6 +1179,13 @@ let rec run : type a. (_ -> a) -> a = fun main ->
               let k = { Suspended.k; fiber } in
               fn fiber (enqueue_result_thread st k)
             )
+
+            | Sched.Suspend f -> Some ( fun k -> 
+              let k = { Suspended.k; fiber } in
+              let resumer v = enqueue_result_thread st k v;	true
+              in 
+                f resumer
+          )    
         | Eio_unix.Private.Await_readable fd -> Some (fun k ->
             match Fiber_context.get_error fiber with
             | Some e -> discontinue k e
