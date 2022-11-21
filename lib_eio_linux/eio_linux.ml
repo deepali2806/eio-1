@@ -1473,11 +1473,14 @@ let rec run : type a.
               		            (match v with
                                 | Ok x -> enqueue_thread st k x
                                 | Error ex -> enqueue_failed_thread st k ex
-				                      );			
-                               true
+				                      )			
+                               
               in 
-                  f resumer;
-                  schedule st
+                  if (f resumer) then
+                    schedule st  
+                  else
+                    Suspended.discontinue k Exit
+                  
              )
           | Eio.Private.Effects.Fork (new_fiber, f) -> Some (fun k ->
               let k = { Suspended.k; fiber } in

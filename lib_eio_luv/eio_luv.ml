@@ -1180,11 +1180,11 @@ let rec run : type a. (_ -> a) -> a = fun main ->
               fn fiber (enqueue_result_thread st k)
             )
 
-            | Sched.Suspend f -> Some ( fun k -> 
+        | Sched.Suspend f -> Some ( fun k -> 
               let k = { Suspended.k; fiber } in
-              let resumer v = enqueue_result_thread st k v;	true
+              let resumer v = enqueue_result_thread st k v
               in 
-                f resumer
+                if not (f resumer) then raise Exit
           )    
         | Eio_unix.Private.Await_readable fd -> Some (fun k ->
             match Fiber_context.get_error fiber with
