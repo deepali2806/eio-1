@@ -1184,7 +1184,8 @@ let rec run : type a. (_ -> a) -> a = fun main ->
               let k = { Suspended.k; fiber } in
               let resumer v = enqueue_result_thread st k v
               in 
-                if not (f resumer) then raise Exit
+                if not (f resumer) then 
+                Suspended.discontinue k Exit
           )    
         | Eio_unix.Private.Await_readable fd -> Some (fun k ->
             match Fiber_context.get_error fiber with
