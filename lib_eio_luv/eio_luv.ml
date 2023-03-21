@@ -1182,10 +1182,22 @@ let rec run : type a. (_ -> a) -> a = fun main ->
 
         | Sched.Suspend f -> Some ( fun k -> 
               let k = { Suspended.k; fiber } in
-              let resumer v = enqueue_result_thread st k v
+              let resumer v = 
+                (
+                match ((Eio.Cancel.check (Eio.Private.Fiber_context.cancellation_context fiber)) ) with
+                | () -> enqueue_thread st k v;
+                        Sched.Resume_success
+                | exception (Eio.Cancel.Cancelled _) -> Sched.Resume_failure
+                )
               in 
-                if not (f resumer) then 
-                Suspended.discontinue k Exit
+                if (f resumer) then
+                    begin
+                      let cancel ex = enqueue_failed_thread st k (Eio.Cancel.Cancelled ex) in
+                      Eio.Private.Fiber_context.set_cancel_fn fiber cancel
+                    end
+                (* if not (f resumer) then  *)
+                else
+                  Suspended.discontinue k Exit
           )    
         | Eio_unix.Private.Await_readable fd -> Some (fun k ->
             match Fiber_context.get_error fiber with
